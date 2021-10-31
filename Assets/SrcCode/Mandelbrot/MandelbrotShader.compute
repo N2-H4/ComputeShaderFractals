@@ -3,48 +3,52 @@
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWTexture2D<float4> Result;
+RWTexture2D<float4> Result; //shader will put output in this shader
 
+//Data struct identical with one inside c# script
 struct Data
 {
 	double w, h, i, r;
-	double cReal, cImag;
 	int screenWidth, screenHeight;
 };
-
+//compute buffer
 StructuredBuffer<Data> buffer;
+//var passed from c# script
 uint maxIterations;
 
-[numthreads(32, 32, 1)]
-void CSMain(uint3 id : SV_DispatchThreadID)
+[numthreads(32,32,1)] //kernel will run on threads clusters of size 32x32
+void CSMain (uint3 id : SV_DispatchThreadID)
 {
-	double real, imag;
-	double real2, imag2;
-	//id.x and id.y are positions of pixel on screen
-	double xOffset = (double)id.x / buffer[0].screenWidth * buffer[0].w;
-	double yOffset = (double)id.y / buffer[0].screenHeight * buffer[0].h;
-	uint iterationCount;
-	float4 color = { 0.0f,0.0f,0.0f,1.0f };
-	real = buffer[0].r + xOffset;
-	imag = buffer[0].i + yOffset;
+	//main function of shader, id variable contains id of thread that shader is run on, id contains 3 uint coresponding to pixel position on screen
+    double real, imag;
+    double real2, imag2;
+    //id.x and id.y are positions of pixel on screen
+    double xOffset = (double)id.x / buffer[0].screenWidth * buffer[0].w;
+    double yOffset = (double)id.y / buffer[0].screenHeight * buffer[0].h;
+    uint iterationCount;
+    float4 color = { 0.0f,0.0f,0.0f,1.0f };
+    real = buffer[0].r + xOffset;
+    imag = buffer[0].i + yOffset;
 
-	for (uint i = 0; i < maxIterations; i++)
-	{
-		real2 = real * real;
-		imag2 = imag * imag;
+	//point on complex plane will be squared until it goes to far from origin or we reach max iteration count
+    for (uint i = 0; i < maxIterations; i++)
+    {
+        real2 = real * real;
+        imag2 = imag * imag;
 
-		if (real2 + imag2 > 4)
-		{
-			break;
-		}
-		else
-		{
-			imag = 2.0 * real * imag + buffer[0].cImag;
-			real = real2 - imag2 + buffer[0].cReal;
-			iterationCount++;
-		}
-	}
+        if (real2 + imag2 > 4)
+        {
+            break;
+        }
+        else
+        {
+            imag = 2.0 * real * imag + buffer[0].i + yOffset;
+            real = real2 - imag2 + buffer[0].r + xOffset;
+            iterationCount++;
+        }
+    }
 
+	//point will be assigned a color depending on numbers of iterations it needed to escape 2-unit circle around origin
 	if (iterationCount != maxIterations)
 	{
 		int colorNr = iterationCount % 16;
@@ -169,5 +173,6 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 		}
 	}
 
+	//put calculated color value inside result texture
 	Result[id.xy] = color;
 }
