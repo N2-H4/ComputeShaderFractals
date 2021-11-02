@@ -68,9 +68,9 @@ public class Mandelbrot : MonoBehaviour
     
     void Update()
     {
-        //if LMB pressed zoom in,if RMB pressed zoom out, if MMB pressed center image on mouse position
-        if (Input.GetMouseButton(0)) zoomIn();
-        if (Input.GetMouseButton(1)) zoomOut();
+        //if I pressed zoom in,if O pressed zoom out, if MMB pressed center image on mouse position
+        if (Input.GetKey(KeyCode.I)) zoomIn();
+        if (Input.GetKey(KeyCode.O)) zoomOut();
         if (Input.GetMouseButtonDown(2)) centerScreen();
 
         //taking input

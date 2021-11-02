@@ -16,6 +16,9 @@ public class JuliaSet : MonoBehaviour
     RenderTexture renderTexture; //texture in which shader will output image
     public RawImage image; //ui element that will display rendered image
 
+    public InputField realInputField;
+    public InputField imagInputField;
+
     //Data struct contains data to be passed in compute buffer
     public struct Data
     {
@@ -73,10 +76,10 @@ public class JuliaSet : MonoBehaviour
     {
         //animating coefficent c
         if(animate) animateValues();
-        //if LMB pressed zoom in
-        if (Input.GetMouseButton(0)) zoomIn();
-        //if RMB pressef zoom out
-        if (Input.GetMouseButton(1)) zoomOut();
+        //if I pressed zoom in
+        if (Input.GetKey(KeyCode.I)) zoomIn();
+        //if O pressef zoom out
+        if (Input.GetKey(KeyCode.O)) zoomOut();
         //if MMB pressed center on mouse position
         if (Input.GetMouseButtonDown(2)) centerScreen();
 
@@ -111,6 +114,32 @@ public class JuliaSet : MonoBehaviour
     public void setAnimate(bool value)
     {
         animate = value;
+    }
+
+    public void setRealSlider(float value)
+    {
+        cReal = value;
+        shaderData[0].cReal = cReal;
+        realInputField.text = value.ToString();
+    }
+
+    public void setImagSlider(float value)
+    {
+        cImag = value;
+        shaderData[0].cImag = cImag;
+        imagInputField.text = value.ToString();
+    }
+
+    public void setRealField(string value)
+    {
+        cReal = System.Convert.ToDouble(value);
+        shaderData[0].cReal = cReal;
+    }
+
+    public void setImagField(string value)
+    {
+        cImag = System.Convert.ToDouble(value);
+        shaderData[0].cImag = cImag;
     }
 
     void centerScreen()

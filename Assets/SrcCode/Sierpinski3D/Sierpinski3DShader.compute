@@ -1,36 +1,40 @@
 ﻿#pragma kernel CSMain
 
+//result texture
 RWTexture2D<float4> Destination;
 
+//transform matrices for ray marching
 float4x4 _CameraToWorld;
 float4x4 _CameraInverseProjection;
 float3 _LightDirection;
 
-float power;
+//fractal coefficients
 float darkness;
 float blackAndWhite;
 float3 colourAMix;
 float3 colourBMix;
-
-int maxIterations = 50;
-
-static const float epsilon = 0.001f;
+float epsilon;
 static const float maxDst = 500;
-static const int maxStepCount = 500;
+static const int maxStepCount = 300;
 
-struct Ray {
+struct Ray 
+{
     float3 origin;
     float3 direction;
 };
 
-Ray CreateRay(float3 origin, float3 direction) {
+Ray CreateRay(float3 origin, float3 direction) 
+{
+    //create ray from origin in given direction
     Ray ray;
     ray.origin = origin;
     ray.direction = direction;
     return ray;
 }
 
-Ray CreateCameraRay(float2 uv) {
+Ray CreateCameraRay(float2 uv) 
+{
+    //calculate ray position and drection based on coords of pixel on screen using transform matrices
     float3 origin = mul(_CameraToWorld, float4(0, 0, 0, 1)).xyz;
     float3 direction = mul(_CameraInverseProjection, float4(uv, 0, 1)).xyz;
     direction = mul(_CameraToWorld, float4(direction, 0)).xyz;
@@ -38,45 +42,10 @@ Ray CreateCameraRay(float2 uv) {
     return CreateRay(origin, direction);
 }
 
-//Mandelbulb distance estimation:
-//http://blog.hvidtfeldts.net/index.php/2011/09/distance-estimated-3d-fractals-v-the-mandelbulb-different-de-approximations/
-//float2 SceneInfo(float3 position) {
-//    float3 z = position;
-//    float dr = 1.0f;
-//    float r = 0.0f;
-//    int iterations = 0;
-//
-//    for (int i = 0; i < maxIterations; i++) {
-//        iterations = i;
-//        r = length(z);
-//
-//        if (r > 2) {
-//            break;
-//        }
-//
-//        // convert to polar coordinates
-//        float theta = acos(z.z / r);
-//        float phi = atan2(z.y, z.x);
-//        dr = pow(r, power - 1.0) * power * dr + 1.0;
-//
-//        // scale and rotate the point
-//        float zr = pow(r, power);
-//        theta = theta * power;
-//        phi = phi * power;
-//
-//        // convert back to cartesian coordinates
-//        z = zr * float3(sin(theta) * cos(phi), sin(phi) * sin(theta), cos(theta));
-//        z += position;
-//    }
-//    float dst = 0.5 * log(r) * r / dr;
-//    return float2(iterations, dst * 1);
-//}
-
-
-
 
 float2 SceneInfo(float3 z)
 {
+    //calculate distance of fractal from given point in space
     float3 a1 = float3(1, 1, 1);
     float3 a2 = float3(-1, -1, 1);
     float3 a3 = float3(1, -1, -1);
@@ -85,7 +54,7 @@ float2 SceneInfo(float3 z)
     int n = 0;
     float dist, d;
     float Scale = 2.0f;
-    while (n < maxIterations) {
+    while (n < 30) {
         c = a1; dist = length(z - a1);
         d = length(z - a2); if (d < dist) { c = a2; dist = d; }
         d = length(z - a3); if (d < dist) { c = a3; dist = d; }
@@ -100,28 +69,32 @@ float2 SceneInfo(float3 z)
 
 
 float3 EstimateNormal(float3 p) {
+    //find normal of surface of fractal
     float x = SceneInfo(float3(p.x + epsilon, p.y, p.z)).y - SceneInfo(float3(p.x - epsilon, p.y, p.z)).y;
     float y = SceneInfo(float3(p.x, p.y + epsilon, p.z)).y - SceneInfo(float3(p.x, p.y - epsilon, p.z)).y;
     float z = SceneInfo(float3(p.x, p.y, p.z + epsilon)).y - SceneInfo(float3(p.x, p.y, p.z - epsilon)).y;
     return normalize(float3(x, y, z));
 }
 
-[numthreads(16, 16, 1)]
+[numthreads(16, 16, 1)] //kernel will be run in clusters of size 16x16 threads
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
+    //get dimensions of output texture
     uint width, height;
     Destination.GetDimensions(width, height);
 
+    //find coords of point wrom which ray will be shoot
     float2 uv = id.xy / float2(width, height);
 
     // Background gradient
     float4 result = lerp(float4(51, 3, 20, 1), float4(16, 6, 28, 1), uv.y) / 255.0;
 
-    // Raymarching:
+    //create ray
     Ray ray = CreateCameraRay(uv * 2 - 1);
     float rayDst = 0;
     int marchSteps = 0;
 
+    //march ray until it hits surface or max steps or max distance is reached
     while (rayDst < maxDst && marchSteps < maxStepCount) {
         marchSteps++;
         float2 sceneInfo = SceneInfo(ray.origin);
@@ -132,6 +105,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
             float escapeIterations = sceneInfo.x;
             float3 normal = EstimateNormal(ray.origin - ray.direction * epsilon * 2);
 
+            //color the pixel
             float colourA = saturate(dot(normal * .5 + .5, -_LightDirection));
             float colourB = saturate(escapeIterations / 16.0);
             float3 colourMix = saturate(colourA * colourAMix + colourB * colourBMix);
@@ -143,9 +117,8 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         rayDst += dst;
     }
 
+    //write color to output texture
     float rim = marchSteps / darkness;
     Destination[id.xy] = lerp(result, 1, blackAndWhite) * rim;
-    //Destination[id.xy] = result*rim;
-    //Destination[id.xy] = lerp(float4(51, 3, 20, 1), float4(16, 6, 28, 1), uv.y) / 255.0;
 
 }
