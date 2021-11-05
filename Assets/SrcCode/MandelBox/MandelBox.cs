@@ -6,14 +6,18 @@ using UnityEngine.UI;
 public class MandelBox : MonoBehaviour
 {
     public ComputeShader fractalShader; //compute shader
-    public InputField epsiloneField; //ui field
+    public InputField epsiloneField;
+    public InputField scaleField;
+    public InputField foldingField;
+    public InputField minRadiusField;
+    public InputField fixedRadiusField;
 
     //fractal coeffcients
-    public float scale=2.0f;
-    public float foldingLimit = 1.0f;
-    public float minRadius = 2.0f;
-    public float fixedRadius = 5.0f;
-    public float epsilon = 0.01f;
+    float scale=2.0f;
+    float foldingLimit = 1.0f;
+    float minRadius = 2.0f;
+    float fixedRadius = 5.0f;
+    float epsilon = 0.01f;
     int eps = 1;
 
     RenderTexture target; //output texture
@@ -51,6 +55,35 @@ public class MandelBox : MonoBehaviour
         eps = (int)value;
         epsilon = 1 / (Mathf.Pow(10, eps));
         epsiloneField.text = value.ToString();
+    }
+
+    public void setScale(float value)
+    {
+        scale = value;
+        scaleField.text = value.ToString();
+    }
+
+    public void setFolding(float value)
+    {
+        foldingLimit = value;
+        foldingField.text = value.ToString();
+    }
+
+    public void setMinRadius(float value)
+    {
+        minRadius = value;
+        minRadiusField.text = value.ToString();
+    }
+
+    public void setFixedRadius(float value)
+    {
+        fixedRadius = value;
+        fixedRadiusField.text = value.ToString();
+    }
+
+    public void setSpeed(float value)
+    {
+        cam.GetComponent<CamControl>().setMovementSpeed(value);
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)

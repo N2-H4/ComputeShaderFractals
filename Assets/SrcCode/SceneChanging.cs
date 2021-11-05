@@ -34,4 +34,9 @@ public class SceneChanging : MonoBehaviour
     {
         SceneManager.LoadScene("Sierpinski");
     }
+
+    public void toMandelbox()
+    {
+        SceneManager.LoadScene("MandelBox");
+    }
 }
